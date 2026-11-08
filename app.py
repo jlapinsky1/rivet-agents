@@ -13,6 +13,7 @@ import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -35,6 +36,13 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title='Rivet Agents', lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=['*'],
+    allow_methods=['POST', 'GET'],
+    allow_headers=['Content-Type'],
+)
 
 
 def err(msg: str, status: int = 400) -> JSONResponse:
