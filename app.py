@@ -10,11 +10,14 @@ Adding a new agent:
 """
 
 import os
+import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
+
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 
@@ -107,6 +110,7 @@ async def agent_router(request: Request):
         try:
             result = run_agent(agent, '\n'.join(lines))
         except Exception as e:
+            logger.exception('run_agent failed')
             return err(f'Agent error: {e}', 500)
 
         if result.error and not result.output:
