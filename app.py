@@ -104,7 +104,10 @@ async def agent_router(request: Request):
         if not agent:
             return err('Agent not found', 500)
 
-        result = run_agent(agent, '\n'.join(lines))
+        try:
+            result = run_agent(agent, '\n'.join(lines))
+        except Exception as e:
+            return err(f'Agent error: {e}', 500)
 
         if result.error and not result.output:
             return err(f'Agent error: {result.error}', 500)
