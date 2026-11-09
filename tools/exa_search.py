@@ -1,71 +1,72 @@
 """
 Exa AI search tool — Tier 1 material pricing (fast, semantic web search).
 
-Returns page content from relevant sources. The calling agent extracts
-price ranges from the text. No structured SKU data — that's Apify (Tier 2).
+Uses exa-py SDK. Tool schema includes `objective` as required per Exa's
+canonical guidance: an LLM tool that takes only `query` is wrong.
 """
 
 import os
-import httpx
+from exa_py import Exa
 
 EXA_API_KEY = os.environ.get('EXA_API_KEY', '')
-EXA_BASE_URL = 'https://api.exa.ai'
 
-# Anthropic tool schema — registered on agents that need web pricing
+_client: Exa | None = None
+
+
+def _get_client() -> Exa:
+    global _client
+    if _client is None:
+        _client = Exa(api_key=EXA_API_KEY)
+    return _client
+
+
+# Anthropic tool schema — `objective` is required alongside `query`
+# so the model tells Exa which results should rank first and what to extract.
 EXA_SEARCH_TOOL = {
     'name': 'exa_search',
     'description': (
-        'Search the web for material pricing, product specifications, and regional cost data. '
-        'Returns page titles, URLs, and text excerpts from relevant sources. '
-        'Use specific queries like "2x6x8 pressure treated pine price 2024" or '
-        '"composite deck board cost per linear foot Southeast US".'
+        'Search the live web and return the most relevant URLs and content. '
+        'Use for current material prices, product specs, and regional cost data.'
     ),
     'input_schema': {
         'type': 'object',
         'properties': {
             'query': {
                 'type': 'string',
-                'description': 'Specific search query for a material or product price',
+                'description': 'Natural-language search query for the material or product',
             },
-            'num_results': {
-                'type': 'integer',
-                'description': 'Number of results to return (1–8)',
-                'default': 5,
+            'objective': {
+                'type': 'string',
+                'description': (
+                    'Goal for this search turn; say which documents should rank first, '
+                    'which should be excluded, and what specific facts or figures to pull from them.'
+                ),
             },
         },
-        'required': ['query'],
+        'required': ['query', 'objective'],
     },
 }
 
 
-def exa_search(query: str, num_results: int = 5) -> list[dict]:
-    """Call Exa search API and return title + url + text for each result."""
+def exa_search(query: str, objective: str = '') -> list[dict]:
+    """Call Exa search and return highlights + source info per result."""
     if not EXA_API_KEY:
         return [{'error': 'EXA_API_KEY not configured'}]
 
     try:
-        response = httpx.post(
-            f'{EXA_BASE_URL}/search',
-            headers={'x-api-key': EXA_API_KEY, 'Content-Type': 'application/json'},
-            json={
-                'query': query,
-                'numResults': min(max(1, num_results), 8),
-                'type': 'neural',
-                'contents': {'text': {'maxCharacters': 800}},
-            },
-            timeout=10.0,
+        exa = _get_client()
+        result = exa.search(
+            query,
+            objective=objective or None,
+            contents={'highlights': True},
         )
-        response.raise_for_status()
-        results = response.json().get('results', [])
         return [
             {
-                'title': r.get('title', ''),
-                'url': r.get('url', ''),
-                'text': r.get('text', ''),
+                'title': r.title or '',
+                'url': r.url or '',
+                'highlights': r.highlights or [],
             }
-            for r in results
+            for r in result.results
         ]
-    except httpx.TimeoutException:
-        return [{'error': 'Exa search timed out'}]
     except Exception as e:
         return [{'error': str(e)}]

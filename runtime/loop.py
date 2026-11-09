@@ -16,7 +16,7 @@ from tools.exa_search import exa_search
 
 # Map tool names to Python callables
 TOOL_EXECUTORS = {
-    'exa_search': lambda inp: exa_search(inp['query'], inp.get('num_results', 5)),
+    'exa_search': lambda inp: exa_search(inp['query'], inp.get('objective', '')),
 }
 
 

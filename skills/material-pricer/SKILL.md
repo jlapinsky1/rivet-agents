@@ -11,9 +11,13 @@ You receive a handyman job description and must return a Bill of Materials (BOM)
 
 ## Search query guidelines
 
-- Be specific: "2x6x8 pressure treated pine price 2024" not "lumber price"
-- Include region when available: "composite deck board price Southeast US"
-- One query per distinct material — don't batch
+Every `exa_search` call requires both `query` and `objective`:
+- `query`: the search itself — specific product name, spec, and price context. "2x6x8 pressure treated pine lumber price 2024" not "lumber price"
+- `objective`: what you need from results — "find current retail price range for this product, prefer retailer pages and lumber pricing guides, extract low/mid/high dollar figures"
+
+Additional rules:
+- Include region in query when available: "composite deck board price Southeast US"
+- One search per distinct material — don't batch
 - Skip materials the customer is supplying themselves
 - 4–8 searches total is the right range; don't pad
 
