@@ -23,13 +23,16 @@ load_dotenv()
 
 # Bootstrap agent registrations
 import agents.job_advisor  # noqa: F401
+import agents.material_pricer  # noqa: F401
 
 from runtime.registry import get_agent
 from runtime.loop import run_agent, parse_json_output
 from db.supabase_client import (
     get_work_item,
+    get_work_item_for_pricing,
     save_scope_analysis,
     save_contractor_notes,
+    save_materials_bom,
 )
 
 
@@ -128,5 +131,59 @@ async def agent_router(request: Request):
             'scopeAnalysis': parsed,
             'contractorNotes': cn or '',
         })
+
+    # ── price-materials ───────────────────────────────────────────────────────
+    # Builds a Bill of Materials with Exa-sourced price ranges and persists it.
+    if task == 'price-materials':
+        work_item_id = body.get('workItemId')
+        if not work_item_id:
+            return err('workItemId is required')
+
+        item = get_work_item_for_pricing(work_item_id, business_id)
+        if not item:
+            return err('Work item not found', 404)
+
+        lines = [f"Job: {item['title']}"]
+        if item.get('description'):
+            lines.append(f"Customer description: {item['description']}")
+        if item.get('customer_notes') and item['customer_notes'] != item.get('description'):
+            lines.append(f"Customer notes: {item['customer_notes']}")
+        if item.get('contractor_notes'):
+            lines.append(f"Contractor notes: {item['contractor_notes']}")
+
+        # Pass extraction result context if available (assembly type, extracted facts)
+        extraction = item.get('extraction_result')
+        if extraction and isinstance(extraction, dict):
+            assembly = extraction.get('assemblyCandidate')
+            if assembly:
+                lines.append(f"Job type (assembly): {assembly}")
+            trade_contexts = extraction.get('tradeContexts', [])
+            if trade_contexts:
+                lines.append(f"Trade context: {', '.join(trade_contexts)}")
+
+        # Regional context from address
+        address = item.get('address')
+        if address:
+            lines.append(f"Customer location: {address}")
+
+        agent = get_agent('material-pricer')
+        if not agent:
+            return err('Agent not found', 500)
+
+        try:
+            result = run_agent(agent, '\n'.join(lines))
+        except Exception as e:
+            logger.exception('material-pricer run_agent failed')
+            return err(f'Agent error: {e}', 500)
+
+        if result.error and not result.output:
+            return err(f'Agent error: {result.error}', 500)
+
+        bom = parse_json_output(result.output)
+        if not bom:
+            return err('Agent did not return valid BOM JSON', 500)
+
+        save_materials_bom(work_item_id, business_id, bom)
+        return JSONResponse({'bom': bom})
 
     return err(f'Unknown task: {task}')

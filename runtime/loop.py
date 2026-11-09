@@ -12,6 +12,12 @@ import anthropic
 from dataclasses import dataclass
 from typing import Optional
 from runtime.registry import AgentDefinition, MODELS, preload_skill_content
+from tools.exa_search import exa_search
+
+# Map tool names to Python callables
+TOOL_EXECUTORS = {
+    'exa_search': lambda inp: exa_search(inp['query'], inp.get('num_results', 5)),
+}
 
 
 MAX_ITERATIONS = 12
@@ -57,6 +63,7 @@ def _run_sonnet(system: str, user_message: str, agent: AgentDefinition) -> Agent
     messages = [{'role': 'user', 'content': user_message}]
     iterations = 0
     tool_calls = 0
+    api_tools = agent.tools if agent.tools else anthropic.NOT_GIVEN
 
     while iterations < MAX_ITERATIONS and tool_calls < MAX_TOOL_CALLS:
         iterations += 1
@@ -65,6 +72,7 @@ def _run_sonnet(system: str, user_message: str, agent: AgentDefinition) -> Agent
                 model=MODELS['sonnet'],
                 max_tokens=4096,
                 system=system,
+                tools=api_tools,
                 messages=messages,
             )
         except Exception as e:
@@ -73,9 +81,27 @@ def _run_sonnet(system: str, user_message: str, agent: AgentDefinition) -> Agent
         if response.stop_reason != 'tool_use':
             return AgentResult(output=_extract_text(response.content), iterations=iterations)
 
-        # Process tool calls (Sonnet agents — to be wired when needed)
+        # Execute tool calls and feed results back
         messages.append({'role': 'assistant', 'content': response.content})
-        tool_calls += len([b for b in response.content if b.type == 'tool_use'])
+        tool_results = []
+        for block in response.content:
+            if block.type != 'tool_use':
+                continue
+            tool_calls += 1
+            executor = TOOL_EXECUTORS.get(block.name)
+            if executor:
+                try:
+                    result = executor(block.input)
+                except Exception as e:
+                    result = {'error': str(e)}
+            else:
+                result = {'error': f'Unknown tool: {block.name}'}
+            tool_results.append({
+                'type': 'tool_result',
+                'tool_use_id': block.id,
+                'content': json.dumps(result),
+            })
+        messages.append({'role': 'user', 'content': tool_results})
 
     return AgentResult(output='', iterations=iterations, error='Max iterations reached')
 

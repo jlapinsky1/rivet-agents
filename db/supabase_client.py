@@ -30,6 +30,27 @@ def get_work_item(work_item_id: int, business_id: str) -> dict | None:
     return res.data
 
 
+def get_work_item_for_pricing(work_item_id: int, business_id: str) -> dict | None:
+    """Fetch job context needed for material pricing, including address for regional pricing."""
+    client = get_client()
+    res = (
+        client.table('work_items')
+        .select('title, description, customer_notes, contractor_notes, address, extraction_result')
+        .eq('id', work_item_id)
+        .eq('business_id', business_id)
+        .single()
+        .execute()
+    )
+    return res.data
+
+
+def save_materials_bom(work_item_id: int, business_id: str, bom: dict) -> None:
+    client = get_client()
+    client.table('work_items').update(
+        {'materials_bom': bom}
+    ).eq('id', work_item_id).eq('business_id', business_id).execute()
+
+
 def save_scope_analysis(work_item_id: int, business_id: str, scope_analysis: dict) -> None:
     client = get_client()
     client.table('work_items').update(

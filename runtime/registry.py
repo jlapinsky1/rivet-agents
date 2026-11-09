@@ -27,6 +27,7 @@ class AgentDefinition:
     instructions: str
     skills: list[str]
     model: str = 'haiku'                 # 'haiku' | 'sonnet'
+    tools: list[dict] = field(default_factory=list)  # Anthropic tool schemas for Sonnet agents
 
 
 # ── Model IDs ────────────────────────────────────────────────────────────────
