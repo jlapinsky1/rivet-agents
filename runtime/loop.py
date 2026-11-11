@@ -168,7 +168,8 @@ def run_agent_stream(
     system = f"{agent.instructions}\n\n{skill_content}".strip()
     api_tools = agent.tools if agent.tools else anthropic.NOT_GIVEN
 
-    working_messages = list(messages)
+    # Strip any client-side-only fields (e.g. 'chips') — API only accepts role + content
+    working_messages = [{'role': m['role'], 'content': m['content']} for m in messages]
     iterations = 0
     tool_calls = 0
     full_text = ''
