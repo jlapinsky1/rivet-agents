@@ -245,8 +245,11 @@ def run_agent_stream(
 
 
 def _sse(event: str, data: str) -> str:
-    """Format a single SSE event."""
-    return f'event: {event}\ndata: {data}\n\n'
+    """Format a single SSE event, encoding newlines as multi-line data fields."""
+    # SSE spec: multi-line data uses repeated data: lines joined by \n on the client.
+    # This prevents \n\n in token text from splitting the event buffer prematurely.
+    encoded = '\ndata: '.join(data.split('\n'))
+    return f'event: {event}\ndata: {encoded}\n\n'
 
 
 def _extract_chips(text: str) -> list[str]:
