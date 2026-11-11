@@ -151,16 +151,6 @@ async def agent_router(request: Request):
         if item.get('contractor_notes'):
             lines.append(f"Contractor notes: {item['contractor_notes']}")
 
-        # Pass extraction result context if available (assembly type, extracted facts)
-        extraction = item.get('extraction_result')
-        if extraction and isinstance(extraction, dict):
-            assembly = extraction.get('assemblyCandidate')
-            if assembly:
-                lines.append(f"Job type (assembly): {assembly}")
-            trade_contexts = extraction.get('tradeContexts', [])
-            if trade_contexts:
-                lines.append(f"Trade context: {', '.join(trade_contexts)}")
-
         # Regional context from address
         address = item.get('address')
         if address:
