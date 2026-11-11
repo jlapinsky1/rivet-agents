@@ -143,6 +143,10 @@ async def agent_router(request: Request):
         if not item:
             return err('Work item not found', 404)
 
+        # Return cached BOM if already priced
+        if item.get('materials_bom'):
+            return JSONResponse({'bom': item['materials_bom']})
+
         lines = [f"Job: {item['title']}"]
         if item.get('description'):
             lines.append(f"Customer description: {item['description']}")

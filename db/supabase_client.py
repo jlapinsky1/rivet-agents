@@ -35,7 +35,7 @@ def get_work_item_for_pricing(work_item_id: int, business_id: str) -> dict | Non
     client = get_client()
     res = (
         client.table('work_items')
-        .select('title, description, customer_notes, contractor_notes, address')
+        .select('title, description, customer_notes, contractor_notes, address, materials_bom')
         .eq('id', work_item_id)
         .eq('business_id', business_id)
         .single()
