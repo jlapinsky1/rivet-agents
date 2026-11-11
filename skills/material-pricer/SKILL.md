@@ -56,6 +56,7 @@ Return exactly this JSON structure:
 ```
 
 Rules:
+- Never use em dashes (—) anywhere in the output. Use a comma, period, or rewrite the sentence instead.
 - `total_mid` on each line = `quantity × unit_price_mid`
 - `total_low / total_mid / total_high` = sum of all line totals at that tier
 - `source_url`: the best single source that informed the price range
