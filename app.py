@@ -4,16 +4,20 @@ Rivet Agents — FastAPI service
 POST /agent
   Body: { task, businessId, ...taskInput }
 
+POST /chat
+  Body: { messages, businessId, conversationId? }
+  Returns: text/event-stream (SSE)
+
 Adding a new agent:
   1. Create agents/<name>.py and call register_agent()
-  2. Add a task case in the router below
+  2. Add a task case in /agent, or use /chat for conversational agents
 """
 
 import os
 import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
@@ -24,15 +28,18 @@ load_dotenv()
 # Bootstrap agent registrations
 import agents.job_advisor  # noqa: F401
 import agents.material_pricer  # noqa: F401
+import agents.contractor_advisor  # noqa: F401
 
 from runtime.registry import get_agent
-from runtime.loop import run_agent, parse_json_output
+from runtime.loop import run_agent, run_agent_stream, parse_json_output
 from db.supabase_client import (
     get_work_item,
     get_work_item_for_pricing,
     save_scope_analysis,
     save_contractor_notes,
     save_materials_bom,
+    get_conversation,
+    upsert_conversation,
 )
 
 
@@ -181,3 +188,117 @@ async def agent_router(request: Request):
         return JSONResponse({'bom': bom})
 
     return err(f'Unknown task: {task}')
+
+
+@app.get('/conversation/{conversation_id}')
+async def get_conversation_endpoint(conversation_id: str, businessId: str = ''):
+    """Load a saved conversation for display on page load."""
+    if not businessId:
+        return err('businessId is required')
+    conv = get_conversation(conversation_id, businessId)
+    if not conv:
+        return err('Not found', 404)
+    return JSONResponse({'messages': conv.get('messages', [])})
+
+
+@app.post('/chat')
+async def chat(request: Request):
+    """
+    Conversational endpoint for the contractor advisor.
+
+    Body: { messages: [{role, content}], businessId, conversationId? }
+    Returns: text/event-stream SSE
+
+    SSE event types:
+      text   — streamed text token
+      tool   — tool call in progress (UI shows thinking label)
+      chips  — JSON array of follow-up chip suggestions
+      id     — conversation id (emitted after stream, for persistence)
+      done   — stream complete
+    """
+    try:
+        body = await request.json()
+    except Exception:
+        return err('Invalid JSON body')
+
+    business_id = body.get('businessId')
+    incoming_messages = body.get('messages', [])
+    conversation_id = body.get('conversationId')
+
+    if not business_id:
+        return err('businessId is required')
+    if not incoming_messages:
+        return err('messages is required')
+
+    # Load saved conversation history if resuming
+    history: list[dict] = []
+    if conversation_id:
+        saved = get_conversation(conversation_id, business_id)
+        if saved:
+            history = saved.get('messages', [])
+
+    # Merge: history + incoming (deduplicate by using incoming as the source of truth)
+    # The client sends the full conversation including history, so just use incoming.
+    messages = incoming_messages
+
+    agent = get_agent('contractor-advisor')
+    if not agent:
+        return err('contractor-advisor agent not found', 500)
+
+    # Collect the full assistant reply text to persist
+    assistant_reply_parts: list[str] = []
+
+    def stream_with_persistence():
+        import re as _re
+        import json as _json
+
+        chips_found: list[str] = []
+
+        for chunk in run_agent_stream(agent, messages, business_id=business_id):
+            # Intercept chips and done events to handle persistence
+            if chunk.startswith('event: chips\n'):
+                # Parse chips from the SSE line
+                data_line = chunk.split('\ndata: ', 1)[-1].strip()
+                try:
+                    chips_found.extend(_json.loads(data_line))
+                except Exception:
+                    pass
+                yield chunk
+
+            elif chunk.startswith('event: text\n'):
+                # Accumulate text for persistence (strip chips block later)
+                data_line = chunk.split('\ndata: ', 1)[-1].strip()
+                assistant_reply_parts.append(data_line)
+                yield chunk
+
+            elif chunk.startswith('event: done\n'):
+                # Persist conversation then emit id + done
+                full_reply = ''.join(assistant_reply_parts)
+                # Strip <chips>...</chips> from stored text
+                clean_reply = _re.sub(r'<chips>.*?</chips>', '', full_reply, flags=_re.DOTALL).strip()
+
+                # Build updated message list to persist
+                # Strip any <chips> blocks from the last user message too (shouldn't be any)
+                messages_to_save = list(messages) + [
+                    {'role': 'assistant', 'content': clean_reply}
+                ]
+
+                try:
+                    conv_id = upsert_conversation(conversation_id, business_id, messages_to_save)
+                    yield f'event: id\ndata: {conv_id}\n\n'
+                except Exception as e:
+                    logger.warning(f'Failed to persist conversation: {e}')
+
+                yield chunk
+
+            else:
+                yield chunk
+
+    return StreamingResponse(
+        stream_with_persistence(),
+        media_type='text/event-stream',
+        headers={
+            'Cache-Control': 'no-cache',
+            'X-Accel-Buffering': 'no',
+        },
+    )
