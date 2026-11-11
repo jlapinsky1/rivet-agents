@@ -163,7 +163,7 @@ def main():
         sys.exit(1)
 
     # Find their business
-    res = supabase.table("businesses").select("id, name").eq("user_id", user.id).single().execute()
+    res = supabase.table("businesses").select("id, name").eq("owner_user_id", user.id).single().execute()
     if not res.data:
         print(f"No business found for user {OWNER_EMAIL}")
         sys.exit(1)
