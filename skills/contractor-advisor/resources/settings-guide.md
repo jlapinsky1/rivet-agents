@@ -141,3 +141,75 @@ Business contact email for customer replies.
 ### homeBaseAddress
 Starting location used to calculate travel distance and cost to job sites.
 **Key:** `homeBaseAddress` (string — full address)
+
+---
+
+## Service Area
+
+Service area is managed separately from business settings. Use `get_service_area` and `update_service_area` for these.
+
+### mode
+**What it is:** How the service area is defined — either a mile radius around a center ZIP or a manually curated list of ZIP codes.
+
+**How Rivet uses it:** When a customer submits a quote request, their ZIP is checked against this config. If they are outside the service area, the form shows an out-of-area message and blocks submission.
+
+**How to explain it:** "Radius mode is the easiest — set your base ZIP and how far out you'll travel and Rivet handles the rest. ZIP list mode is for contractors who only cover specific corridors or municipalities."
+
+**Values:** `'radius'` or `'zip-list'`
+**Key:** `mode`
+
+---
+
+### centerZip
+**What it is:** The ZIP code at the center of your service radius. Usually your shop, home base, or main dispatch location.
+
+**How Rivet uses it:** Distance from this ZIP is calculated for every customer ZIP in radius mode. Required when mode is `'radius'`.
+
+**How to explain it:** "This is where you're based. Every customer ZIP gets checked against how far it is from here."
+
+**Key:** `centerZip` (string — five-digit ZIP)
+
+---
+
+### radiusMiles
+**What it is:** How many miles out from your center ZIP you will travel for jobs.
+
+**How Rivet uses it:** Customer ZIPs whose centroid falls beyond this distance are rejected with the out-of-area message.
+
+**How to explain it:** "Set this to the realistic max you'll drive one-way. If you won't do jobs more than 45 miles out, set it to 45."
+
+**Typical range:** 15–75 miles depending on market density.
+**Key:** `radiusMiles` (number, miles)
+
+---
+
+### serviceableZips
+**What it is:** The list of ZIP codes you actively service (ZIP list mode only).
+
+**How Rivet uses it:** Customers in ZIPs on this list can submit requests. Everyone else gets the out-of-area message.
+
+**How to explain it:** "In ZIP list mode, only customers in these ZIPs can book. Radius mode replaces this with the automatic circle."
+
+**Key:** `serviceableZips` (array of ZIP strings) — use `addServiceableZips` / `removeServiceableZips` in `update_service_area`
+
+---
+
+### excludedZips
+**What it is:** ZIPs that are permanently blocked, even if they fall inside the radius or serviceable list.
+
+**How Rivet uses it:** A hard block. Use for areas that are logistically impractical — a ZIP technically in range but across a river or in traffic-heavy territory.
+
+**How to explain it:** "Even if a ZIP is inside your radius, you can exclude it completely. Customers there get rejected no matter what."
+
+**Key:** `excludedZips` (array) — use `addExcludedZips` / `removeExcludedZips`
+
+---
+
+### unavailableZips
+**What it is:** ZIPs that are temporarily paused. Customers see "we're not currently servicing your area — check back soon" instead of a flat rejection.
+
+**How Rivet uses it:** A softer block. Good for seasonal coverage gaps or areas where you're temporarily at capacity.
+
+**How to explain it:** "Use unavailable instead of excluded when you plan to come back to that area. The message customers see is friendlier."
+
+**Key:** `unavailableZips` (array) — use `addUnavailableZips` / `removeUnavailableZips`

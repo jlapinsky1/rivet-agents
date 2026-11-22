@@ -64,6 +64,8 @@ Conversational agent accessible via `POST /chat` (SSE streaming). Helps contract
 | `add_contractor_note` | `tools/contractor_actions.py` | Append note to work item |
 | `get_settings` | `tools/settings.py` | Read allowed business settings |
 | `update_settings` | `tools/settings.py` | Write one or more business settings |
+| `get_service_area` | `tools/service_area.py` | Read service area config (mode, radius, ZIP lists) |
+| `update_service_area` | `tools/service_area.py` | Update coverage mode, radius, or ZIP lists |
 
 ## SSE stream format (`POST /chat`)
 
@@ -115,7 +117,7 @@ create index on contractor_conversations(business_id);
 agents/
   job_advisor.py              — Job Advisor (Haiku, single-pass)
   material_pricer.py          — Material Pricer (Sonnet, Exa tool-use)
-  contractor_advisor.py       — Contractor Advisor (Sonnet, 13 tools, /chat)
+  contractor_advisor.py       — Contractor Advisor (Sonnet, 15 tools, /chat)
 
 skills/
   scope-clarifier/
@@ -137,6 +139,7 @@ tools/
   contractor_actions.py       — mutations: send estimate, email, accept, reject, price, note
   agent_tasks.py              — invoke other agents: refresh_scope, price_materials, re_estimate_job
   settings.py                 — read/write businesses.settings JSONB (allowed-key whitelist)
+  service_area.py             — read/write service area config via Netlify agent endpoint
 
 runtime/
   loop.py                     — Anthropic API calls (Haiku, Sonnet, streaming); _navigate interception

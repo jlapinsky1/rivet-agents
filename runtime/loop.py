@@ -25,6 +25,7 @@ from tools.contractor_actions import (
 )
 from tools.agent_tasks import refresh_scope, price_materials, re_estimate_job
 from tools.settings import get_settings, update_settings
+from tools.service_area import get_service_area, update_service_area
 
 # Map tool names to Python callables.
 # Work item tools need business_id injected at call time (see _execute_tool).
@@ -43,6 +44,8 @@ TOOL_EXECUTORS = {
     'add_contractor_note': lambda inp, bid: add_contractor_note(bid, inp['work_item_id'], inp['note']),
     'get_settings': lambda inp, bid: get_settings(bid),
     'update_settings': lambda inp, bid: update_settings(bid, inp['updates']),
+    'get_service_area': lambda inp, bid: get_service_area(bid),
+    'update_service_area': lambda inp, bid: update_service_area(bid, inp['updates']),
 }
 
 # Human-readable labels shown in the UI while a tool is running
@@ -61,6 +64,8 @@ TOOL_LABELS = {
     'exa_search': 'Searching for prices',
     'get_settings': 'Reading settings',
     'update_settings': 'Saving settings',
+    'get_service_area': 'Reading service area',
+    'update_service_area': 'Saving service area',
 }
 
 MAX_ITERATIONS = 12
