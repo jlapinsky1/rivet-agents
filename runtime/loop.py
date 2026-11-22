@@ -24,7 +24,7 @@ from tools.contractor_actions import (
     add_contractor_note,
 )
 from tools.agent_tasks import refresh_scope, price_materials, re_estimate_job
-from tools.settings import get_settings, update_settings
+from tools.settings import get_settings, update_settings, navigate_settings
 from tools.service_area import get_service_area, update_service_area
 
 # Map tool names to Python callables.
@@ -42,6 +42,7 @@ TOOL_EXECUTORS = {
     'reject_work': lambda inp, bid: reject_work(bid, inp['work_item_id'], inp.get('reason', '')),
     'update_work_price': lambda inp, bid: update_work_price(bid, inp['work_item_id'], inp['new_price'], inp.get('reason_code', '')),
     'add_contractor_note': lambda inp, bid: add_contractor_note(bid, inp['work_item_id'], inp['note']),
+    'navigate_settings': lambda inp, bid: navigate_settings(inp['section']),
     'get_settings': lambda inp, bid: get_settings(bid),
     'update_settings': lambda inp, bid: update_settings(bid, inp['updates']),
     'get_service_area': lambda inp, bid: get_service_area(bid),
@@ -62,6 +63,7 @@ TOOL_LABELS = {
     'update_work_price': 'Updating price',
     'add_contractor_note': 'Saving note',
     'exa_search': 'Searching for prices',
+    'navigate_settings': 'Opening settings',
     'get_settings': 'Reading settings',
     'update_settings': 'Saving settings',
     'get_service_area': 'Reading service area',

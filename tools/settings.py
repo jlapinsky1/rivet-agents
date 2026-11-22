@@ -66,7 +66,37 @@ def update_settings(business_id: str, updates: dict) -> dict:
     return result
 
 
+def navigate_settings(section: str) -> dict:
+    """
+    Emit a navigate hint to open a specific Settings section in the UI.
+    No data is read or written — purely a UI navigation signal.
+    """
+    return {'_navigate': {'screen': 'Settings', 'section': section}}
+
+
 # ── Anthropic tool schemas ────────────────────────────────────────────────────
+
+NAVIGATE_SETTINGS_TOOL = {
+    'name': 'navigate_settings',
+    'description': (
+        'Open a specific Settings section in the contractor\'s UI. '
+        'Use this when a contractor asks where to find a setting, how to configure '
+        'something, or wants to be taken to a specific settings panel — without '
+        'making any changes yet. '
+        'Valid sections: Business, Goals & Capacity, Pricing & Costs, Advanced Engine, '
+        'Quote Form, Service Area.'
+    ),
+    'input_schema': {
+        'type': 'object',
+        'properties': {
+            'section': {
+                'type': 'string',
+                'description': 'The Settings section to open.',
+            },
+        },
+        'required': ['section'],
+    },
+}
 
 GET_SETTINGS_TOOL = {
     'name': 'get_settings',

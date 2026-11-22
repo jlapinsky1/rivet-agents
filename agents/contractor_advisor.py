@@ -23,7 +23,7 @@ from tools.agent_tasks import (
     PRICE_MATERIALS_TOOL,
     RE_ESTIMATE_JOB_TOOL,
 )
-from tools.settings import GET_SETTINGS_TOOL, UPDATE_SETTINGS_TOOL
+from tools.settings import GET_SETTINGS_TOOL, UPDATE_SETTINGS_TOOL, NAVIGATE_SETTINGS_TOOL
 from tools.service_area import GET_SERVICE_AREA_TOOL, UPDATE_SERVICE_AREA_TOOL
 
 contractor_advisor = AgentDefinition(
@@ -50,6 +50,7 @@ contractor_advisor = AgentDefinition(
         REJECT_WORK_TOOL,
         UPDATE_WORK_PRICE_TOOL,
         ADD_CONTRACTOR_NOTE_TOOL,
+        NAVIGATE_SETTINGS_TOOL,
         GET_SETTINGS_TOOL,
         UPDATE_SETTINGS_TOOL,
         GET_SERVICE_AREA_TOOL,
