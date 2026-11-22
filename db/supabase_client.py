@@ -130,6 +130,29 @@ def save_contractor_notes(work_item_id: int, business_id: str, notes: str) -> No
     ).eq('id', work_item_id).eq('business_id', business_id).execute()
 
 
+# ── Business settings ─────────────────────────────────────────────────────────
+
+def get_business_settings(business_id: str) -> dict:
+    """Return the settings JSONB blob for a business."""
+    client = get_client()
+    res = (
+        client.table('businesses')
+        .select('settings')
+        .eq('id', business_id)
+        .single()
+        .execute()
+    )
+    return (res.data or {}).get('settings') or {}
+
+
+def update_business_settings(business_id: str, updates: dict) -> dict:
+    """Merge updates into businesses.settings and return the full merged settings."""
+    current = get_business_settings(business_id)
+    merged = {**current, **updates}
+    get_client().table('businesses').update({'settings': merged}).eq('id', business_id).execute()
+    return merged
+
+
 # ── Conversations ─────────────────────────────────────────────────────────────
 
 def get_conversation(conversation_id: str, business_id: str) -> dict | None:
